@@ -84,7 +84,7 @@ def parse_time_slots(slots_str):
         return []
     return list(str(slots_str))
 
-def check_conflicts(selected_courses_data):
+def check_conflicts(selected_courses_data, code_column=None):
     """檢查課程衝突，返回詳細的衝突資訊"""
     conflicts = []
     schedule_map = defaultdict(list)  # {(星期, 節次): [課程資料]}
@@ -110,10 +110,10 @@ def check_conflicts(selected_courses_data):
                         '課程2教室': course['教室'],
                     }
                     
-                    # 如果有課程代碼欄位，也加入
-                    if '課程代碼' in existing_course and '課程代碼' in course:
-                        conflict_info['課程1代碼'] = existing_course['課程代碼']
-                        conflict_info['課程2代碼'] = course['課程代碼']
+                    # 如果有科目代碼欄位，也加入（使用偵測到的欄位名稱）
+                    if code_column and code_column in existing_course and code_column in course:
+                        conflict_info[f'課程1{code_column}'] = existing_course[code_column]
+                        conflict_info[f'課程2{code_column}'] = course[code_column]
                     
                     conflicts.append(conflict_info)
             
@@ -268,18 +268,115 @@ st.markdown("""
 df = load_courses(COURSE_FILE)
 
 if df is not None:
-    st.success(f"✅ 成功載入 {len(df)} 筆課程資料 (檔案: {COURSE_FILE})")
+    # 檢測科目代碼欄位
+    code_column_names = ['科目代碼', '課程代碼', '課號', 'course_code', 'code']
+    detected_code_column = None
     
-    # 側邊欄:選擇學系和課程
-    st.sidebar.header("選擇課程")
+    for col_name in code_column_names:
+        if col_name in df.columns:
+            detected_code_column = col_name
+            break
     
-    # 取得所有系所
-    departments = sorted(df['系所'].unique())
-    selected_depts = st.sidebar.multiselect("選擇學系", departments)
+    # 顯示載入資訊
+    if detected_code_column:
+        st.success(f"✅ 成功載入 {len(df)} 筆課程資料 (檔案: {COURSE_FILE})  |  偵測到科目代碼欄位: **{detected_code_column}**")
+    else:
+        st.success(f"✅ 成功載入 {len(df)} 筆課程資料 (檔案: {COURSE_FILE})")
+        st.info("ℹ️ 未偵測到科目代碼欄位，搜尋功能將僅搜尋課程名稱")
+    
+    # 側邊欄:搜尋和選擇課程
+    st.sidebar.header("🔍 快速搜尋課程")
+    
+    # 搜尋框
+    search_query = st.sidebar.text_input(
+        "輸入課程名稱或科目代碼",
+        placeholder="例如：微積分、CS101",
+        help="支援模糊搜尋，會搜尋課程名稱和科目代碼"
+    )
     
     # 儲存選中的課程
     if 'selected_courses' not in st.session_state:
         st.session_state.selected_courses = []
+    
+    # 如果有搜尋內容，顯示搜尋結果
+    if search_query:
+        st.sidebar.subheader("📋 搜尋結果")
+        
+        # 搜尋邏輯：在課程名稱和科目代碼中查找
+        search_mask = df['科目名稱'].str.contains(search_query, case=False, na=False)
+        
+        # 如果找到科目代碼欄位，也加入搜尋
+        if detected_code_column:
+            search_mask = search_mask | df[detected_code_column].astype(str).str.contains(search_query, case=False, na=False)
+        
+        search_results = df[search_mask]
+        
+        if len(search_results) > 0:
+            st.sidebar.success(f"找到 {len(search_results)} 門課程")
+            
+            # 初始化搜尋選擇的 session state
+            if 'search_selection' not in st.session_state:
+                st.session_state.search_selection = []
+            
+            # 建立搜尋結果的選項
+            search_options = {}
+            for idx, row in search_results.iterrows():
+                # 組合顯示資訊 - 使用檢測到的科目代碼欄位
+                code_info = ""
+                if detected_code_column and detected_code_column in row and pd.notna(row[detected_code_column]):
+                    code_info = f"[{row[detected_code_column]}] "
+                
+                class_info = f"[{row['班級']}] " if pd.notna(row['班級']) else ""
+                dept_info = f"({row['系所']})"
+                time_info = f"{row['星期']}{row['節次']}"
+                
+                option_text = f"{code_info}{class_info}{row['科目名稱']} {dept_info}\n👨‍🏫 {row['授課教師']} | ⏰ {time_info}"
+                search_options[option_text] = idx
+            
+            # 顯示搜尋結果並允許選擇
+            selected_from_search = st.sidebar.multiselect(
+                "從搜尋結果中選擇課程",
+                options=list(search_options.keys()),
+                default=st.session_state.search_selection,
+                key="search_results_selector"
+            )
+            
+            # 更新 session state
+            st.session_state.search_selection = selected_from_search
+            
+            # 加入選課按鈕
+            col1, col2 = st.sidebar.columns([1, 1])
+            with col1:
+                if st.button("➕ 加入選課", use_container_width=True, disabled=len(selected_from_search)==0):
+                    added_count = 0
+                    for option in selected_from_search:
+                        idx = search_options[option]
+                        if idx not in st.session_state.selected_courses:
+                            st.session_state.selected_courses.append(idx)
+                            added_count += 1
+                    
+                    if added_count > 0:
+                        st.sidebar.success(f"✅ 已加入 {added_count} 門課程")
+                    else:
+                        st.sidebar.info("ℹ️ 所選課程已在選課清單中")
+                    
+                    # 清空選擇
+                    st.session_state.search_selection = []
+                    st.rerun()
+            
+            with col2:
+                if st.button("🔄 清除選擇", use_container_width=True, disabled=len(selected_from_search)==0):
+                    st.session_state.search_selection = []
+                    st.rerun()
+        else:
+            st.sidebar.warning(f"找不到符合「{search_query}」的課程")
+    
+    st.sidebar.markdown("---")
+    st.sidebar.header("📚 按系所選擇課程")
+    
+    # 取得所有系所
+    departments = sorted(df['系所'].unique())
+    selected_depts = st.sidebar.multiselect("選擇學系", departments)
     
     if selected_depts:
         # 根據選擇的系所篩選課程
@@ -343,16 +440,18 @@ if df is not None:
         
         # 顯示課程列表
         display_cols = ['科目名稱', '系所', '班級', '授課教師', '星期', '節次', '學分數', '教室']
-        # 如果有課程代碼欄位也顯示
-        if '課程代碼' in selected_data.columns:
-            display_cols = ['課程代碼'] + display_cols
+        
+        # 如果有科目代碼欄位也顯示（使用偵測到的欄位名稱）
+        if detected_code_column and detected_code_column in selected_data.columns:
+            display_cols = [detected_code_column] + display_cols
+        
         # 只顯示存在的欄位
         display_cols = [col for col in display_cols if col in selected_data.columns]
         st.dataframe(selected_data[display_cols], use_container_width=True)
         
         # 檢查衝突
         st.header("⚠️ 衝突檢測")
-        conflicts = check_conflicts(selected_data)
+        conflicts = check_conflicts(selected_data, code_column=detected_code_column)
         
         if conflicts:
             st.error(f"發現 {len(conflicts)} 個課程時間衝突!")
@@ -461,19 +560,31 @@ if df is not None:
         st.info("👈 請從左側選單選擇課程")
         st.markdown("""
         ### 使用說明
+        
+        #### 🔍 快速搜尋
+        - 在搜尋框中輸入**課程名稱**或**科目代碼**
+        - 支援**模糊搜尋**，輸入關鍵字即可
+        - 從搜尋結果中選擇課程後，點擊「➕ 加入選課」按鈕
+        
+        #### 📚 按系所瀏覽
         1. 在左側邊欄選擇「學系」
         2. 選擇「班級」（可選）
         3. 選擇想要的「課程」
-        4. 系統會自動檢測課程衝突
-        5. 查看課表並可匯出 CSV、HTML 或圖片
+        
+        #### ✅ 其他功能
+        - 系統會自動檢測課程衝突
+        - 查看課表並可匯出 CSV、HTML 或圖片
         
         ### 匯出格式說明
         - **CSV (Excel)**: 使用 UTF-8 BOM 編碼，Excel 可直接開啟無亂碼
         - **HTML**: 互動式課表，可在瀏覽器中開啟、放大檢視
         - **PNG**: 高解析度圖片格式，適合列印或分享（需安裝 kaleido）
         
-        ### 💡 如果 CSV 仍有亂碼
-        請在 Excel 中使用「資料」→「取得外部資料」→「從文字檔」來匯入 CSV，並選擇 UTF-8 編碼。
+        ### 💡 搜尋小技巧
+        - 搜尋「微積分」會找到所有包含微積分的課程
+        - 搜尋「CS」會找到所有課程代碼包含 CS 的課程
+        - 搜尋結果會顯示課程代碼、名稱、教師、時間等完整資訊
+        - **記得選擇後要點擊「➕ 加入選課」按鈕才會加入課表！**
         """)
 
 else:
