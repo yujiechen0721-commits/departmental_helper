@@ -1,13 +1,28 @@
 import streamlit as st
 
-# 隱藏右上角 GitHub + Fork 按鈕
+# 隱藏右上角 GitHub + Fork 按鈕（電腦 + 手機版）
 hide_menu_style = """
-    <style>
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display:none;}
-    </style>
-    """
+<style>
+    /* 隱藏主選單和頭部 */
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    
+    /* 隱藏 GitHub 圖標 + Fork 按鈕 */
+    .stDeployButton {display: none !important;}
+    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_ {display: none !important;}
+    
+    /* 手機版專用：隱藏響應式元素 */
+    @media (max-width: 768px) {
+        .st-emotion-cache-1jc7ptx {display: none !important;}
+        .st-emotion-cache-e1ewe7hr3 {display: none !important;}
+        .css-1jc7ptx, .e1ewe7hr3 {display: none !important;}
+    }
+    
+    /* 通用隱藏：確保所有裝置都生效 */
+    [data-testid="stDeployButton"] {display: none !important;}
+    .viewerBadge {display: none !important;}
+</style>
+"""
 st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 import pandas as pd
