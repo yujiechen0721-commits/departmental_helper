@@ -1,4 +1,15 @@
 import streamlit as st
+
+# 隱藏右上角 GitHub + Fork 按鈕
+hide_menu_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    </style>
+    """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
+
 import pandas as pd
 import plotly.graph_objects as go
 from collections import defaultdict
