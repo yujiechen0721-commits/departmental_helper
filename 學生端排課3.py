@@ -1,29 +1,28 @@
 import streamlit as st
 
-# 隱藏右上角 GitHub + Fork 按鈕（電腦 + 手機版）
-hide_menu_style = """
+# 隱藏所有 Streamlit 標誌（電腦 + 手機 + 紙飛機）
+hide_streamlit = """
 <style>
-    /* 隱藏主選單和頭部 */
+    /* 通用隱藏 */
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
-    
-    /* 隱藏 GitHub 圖標 + Fork 按鈕 */
-    .stDeployButton {display: none !important;}
-    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_ {display: none !important;}
-    
-    /* 手機版專用：隱藏響應式元素 */
-    @media (max-width: 768px) {
-        .st-emotion-cache-1jc7ptx {display: none !important;}
-        .st-emotion-cache-e1ewe7hr3 {display: none !important;}
-        .css-1jc7ptx, .e1ewe7hr3 {display: none !important;}
-    }
-    
-    /* 通用隱藏：確保所有裝置都生效 */
+    footer {visibility: hidden !important;}
+    .stAppDeployButton {display: none !important;}
     [data-testid="stDeployButton"] {display: none !important;}
-    .viewerBadge {display: none !important;}
+
+    /* 手機版最頑固的紅色紙飛機 + Hosted with Streamlit */
+    .stApp > footer {display: none !important;}
+    .st-emotion-cache-1kyx0lz {display: none !important;}   /* 2025 年主流 class */
+    .st-emotion-cache-1q6c3lj {display: none !important;}   /* 備用 class */
+    footer .css-1y0x6sr {display: none !important;}
+    div[data-testid="stFooter"] {display: none !important;}
+
+    /* 萬能保險（不管 Streamlit 換什麼 class 都死） */
+    footer {visibility: hidden !important; display: none !important;}
+    div:contains("Hosted with Streamlit") {display: none !important;}
 </style>
 """
-st.markdown(hide_menu_style, unsafe_allow_html=True)
+st.markdown(hide_streamlit, unsafe_allow_html=True)
 
 import pandas as pd
 import plotly.graph_objects as go
