@@ -1,44 +1,14 @@
 import streamlit as st
 
-# 終極隱藏：電腦 + 手機 + 動態 footer
-hide_streamlit_full = """
-<style>
-    /* 基本隱藏 */
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="stDeployButton"] {display: none !important;}
-    .viewerBadge {display: none !important;}
-    
-    /* 手機版專用：隱藏響應式 footer */
-    @media (max-width: 768px) {
-        .st-emotion-cache-1kyx0lz {display: none !important;}
-        .st-emotion-cache-1q6c3lj {display: none !important;}
-        .css-1y0x6sr {display: none !important;}
-        div[data-testid="stFooter"] {display: none !important;}
-        .stApp > footer {display: none !important;}
-    }
-    
-    /* 萬能隱藏：包含文字 */
-    div:contains("Hosted with Streamlit") {display: none !important;}
-    div:contains("Created by") {display: none !important;}
-</style>
-
-<script>
-    // JS 強制隱藏動態載入的 footer（手機版關鍵）
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-            var footer = document.querySelector('footer');
-            if (footer) footer.style.display = 'none';
-            
-            var badges = document.querySelectorAll('.viewerBadge, .stDeployButton');
-            badges.forEach(b => b.style.display = 'none');
-        }, 1000);  // 延遲 1 秒，確保動態元素載入完
-    });
-</script>
-"""
-st.markdown(hide_streamlit_full, unsafe_allow_html=True)
+# 隱藏右上角 GitHub + Fork 按鈕
+hide_menu_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    </style>
+    """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 import pandas as pd
 import plotly.graph_objects as go
